@@ -179,6 +179,7 @@ def view_images_in_directory(path: str,
     plt.imshow(grid)
     plt.tight_layout()
     plt.grid(False)
+    plt.axis('off')
 
     if save_path is not None:
         plt.savefig(save_path)
