@@ -1,3 +1,4 @@
+import os
 import glob
 import random
 import logging
@@ -44,6 +45,8 @@ def save_classification_report(y_true: Iterable,
     df = pd.DataFrame(report).T
     cr = sns.heatmap(df, annot=True, cmap='coolwarm', cbar=False)
 
+    os.makedirs(directory, exist_ok=True)
+
     cr.yaxis.set_ticklabels(cr.yaxis.get_ticklabels(),
                             rotation=0, ha='right', fontsize=10)
     cr.xaxis.set_ticklabels(cr.xaxis.get_ticklabels(),
@@ -82,6 +85,8 @@ def save_confusion_matrix(y_true: Iterable,
     df = pd.DataFrame(matrix, index=class_labels, columns=class_labels)
     hm = sns.heatmap(df, annot=True, cmap='coolwarm', cbar=False)
 
+    os.makedirs(directory, exist_ok=True)
+
     hm.yaxis.set_ticklabels(hm.yaxis.get_ticklabels(),
                             rotation=0, ha='right', fontsize=10)
     hm.xaxis.set_ticklabels(hm.xaxis.get_ticklabels(),
@@ -96,7 +101,7 @@ def save_confusion_matrix(y_true: Iterable,
 
 
 def get_logger(name: str,
-               log_file: Optional[str] = None,
+               file_path: Optional[str] = None,
                formatter: Optional[logging.Formatter] = None,
                level: int = logging.DEBUG):
     """Set up a python logger to log results.
@@ -107,7 +112,7 @@ def get_logger(name: str,
     formatter : logging.Formatter, default=None
         A custom formatter for the logger to output. If None, a default
         formatter of format `"%Y-%m-%d %H:%M:%S LEVEL MESSAGE"` is used.
-    log_file : str, default=None
+    file_path : str, default=None
         File path to record logs. Must end with a readable extension. If None,
         the logs are not logged in any file, and are logged only to `stdout`.
     level : LEVEL or int, default=logging.DEBUG (10)
@@ -135,8 +140,8 @@ def get_logger(name: str,
     streamHandler.setFormatter(formatter)
     logger.addHandler(streamHandler)
 
-    if log_file is not None:
-        fileHandler = logging.FileHandler(log_file)
+    if file_path is not None:
+        fileHandler = logging.FileHandler(file_path)
         fileHandler.setFormatter(formatter)
         logger.addHandler(fileHandler)
 
