@@ -6,22 +6,88 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
 from sklearn.metrics import classification_report, confusion_matrix
 
 import torch
-from torchvision.utils import make_grid
-from torchvision.io import read_image, ImageReadMode
+import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.transforms.functional as TVF
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from torchvision.utils import make_grid
+from torchvision.datasets import ImageFolder
+from torchvision.io import read_image, ImageReadMode
 
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 plt.style.use('seaborn')
 
 
+@dataclass
+class ModelConfig:
+    img_size: int = 32
+    n_channels: int = 1
+    n_classes: int = 5
+    batch_size: int = 32
+
+
+class Net(nn.Module):
+
+    def __init__(self, config: ModelConfig):
+        super(Net, self).__init__()
+
+        self.conv1 = nn.Conv2d(config.n_channels, 6,
+                               kernel_size=5,
+                               stride=1,
+                               padding='valid')
+        self.conv2 = nn.Conv2d(6, 16,
+                               kernel_size=5,
+                               stride=1,
+                               padding='valid')
+        self.conv3 = nn.Conv2d(16, 120,
+                               kernel_size=5,
+                               stride=1,
+                               padding='valid')
+
+        self.avgpool = nn.AvgPool2d(kernel_size=2,
+                                    stride=2)
+        self.flatten = nn.Flatten()
+        self.linear1 = nn.Linear(120, 84)
+        self.out = nn.Linear(84, config.n_classes)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = self.avgpool(x)
+        x = F.relu(self.conv2(x))
+        x = self.avgpool(x)
+        x = F.relu(self.conv3(x))
+        x = self.flatten(x)
+        x = F.relu(self.linear1(x))
+        output = self.out(x)
+        return output
+
+
+def get_transforms(config: ModelConfig) -> transforms.Compose:
+    """Returns a compose of torchvision transforms."""
+
+    transform = [
+        transforms.ToTensor(),
+        transforms.Resize((config.img_size, config.img_size)),
+        transforms.Pad(2, fill=0),
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    ]
+
+    if config.n_channels == 1:
+        transform.append(transforms.Grayscale())
+
+    return transforms.Compose(transform)
+
+
 def save_classification_report(y_true: Iterable,
                                y_pred: Iterable,
-                               class_labels: List[str],
-                               directory: str = '.'):
+                               class_labels: list[str],
+                               directory: str = '.') -> None:
     """Computes the classification report and saves it as a heatmap.
     Parameters
     ----------
@@ -59,8 +125,8 @@ def save_classification_report(y_true: Iterable,
 
 def save_confusion_matrix(y_true: Iterable,
                           y_pred: Iterable,
-                          class_labels: List[str],
-                          directory: str = '.'):
+                          class_labels: list[str],
+                          directory: str = '.') -> None:
     """Computes and saves the normalized confusion matrix.
     Parameters
     ----------
@@ -103,7 +169,7 @@ def save_confusion_matrix(y_true: Iterable,
 def get_logger(name: str,
                file_path: Optional[str] = None,
                formatter: Optional[logging.Formatter] = None,
-               level: int = logging.DEBUG):
+               level: int = logging.DEBUG) -> logging.Logger:
     """Set up a python logger to log results.
     Parameters
     ----------
@@ -148,7 +214,7 @@ def get_logger(name: str,
     return logger
 
 
-def set_rng_seed(seed: int = 42):
+def set_rng_seed(seed: int = 42) -> None:
     """Sets a fixed seed for random number generators for built-in random
     module, numpy, and pytorch."""
 
@@ -187,5 +253,36 @@ def view_images_in_directory(path: str,
     plt.show()
 
 
-if __name__ == "__main__":
-    pass
+@torch.no_grad()
+def verify_init_loss(config: ModelConfig,
+                     data: tuple[torch.Tensor, torch.Tensor],
+                     device: torch.device) -> tuple[float, float]:
+    """Returns initial loss of model and expected loss."""
+
+    model = Net(config)
+    model.to(device)
+    model.eval()
+
+    x, y = data
+    x = x.to(device)
+    y = y.to(device)
+
+    pred = model(x)
+    init_loss = F.cross_entropy(pred, y).item()
+    expected_loss = -torch.log(1/torch.tensor(config.n_classes)).item()
+
+    return init_loss, expected_loss
+
+
+def get_dataloader(path: str, config: ModelConfig, n_workers: int,
+                   shuffle: bool = True) -> DataLoader:
+    """Returns a torchvision dataloader that iters over batched data(x, y)."""
+
+    transform = get_transforms(config)
+    dataset = ImageFolder(path, transform=transform)
+    dataloader = DataLoader(dataset=dataset,
+                            batch_size=config.batch_size,
+                            num_workers=n_workers,
+                            shuffle=shuffle)
+
+    return dataloader
