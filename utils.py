@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms.functional as TVF
+from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.utils import make_grid
@@ -26,7 +27,7 @@ plt.style.use('seaborn')
 
 @dataclass
 class ModelConfig:
-    img_size: int = 32
+    img_size: int = 28
     n_channels: int = 1
     n_classes: int = 5
     batch_size: int = 32
@@ -253,9 +254,105 @@ def view_images_in_directory(path: str,
     plt.show()
 
 
+def input_independent_baseline(config: ModelConfig,
+                               device: torch.device,
+                               logger: logging.Logger,
+                               lr: float,
+                               n_workers: int) -> tuple[list[float], list[float]]:
+    """Returns the loss values per batch for zeroed input and normal input."""
+    # TODO: Refactor this function to avoid repeated code.
+
+    logger.info('Training with zeroed input...')
+
+    model = Net(config)
+    model.to(device)
+    model.train()
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = Adam(model.parameters(), lr=lr)
+    train_loader = get_dataloader('./data/train', config, n_workers)
+    lossi_zero = []
+
+    for i, data in enumerate(train_loader):
+        x, y = data
+        x, y = torch.zeros_like(x).to(device), y.to(device)
+
+        pred = model(x)
+        loss = loss_fn(pred, y)
+
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+
+        lossi_zero.append(loss.item())
+
+        if i % 10 == 0:
+            logger.debug(f'Iteration: {i} Loss: {loss.item():.4f}')
+
+    logger.info('Training with real input...')
+
+    model = Net(config)
+    model.to(device)
+    model.train()
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = Adam(model.parameters(), lr=lr)
+    train_loader = get_dataloader('./data/train', config, n_workers)
+    lossi = []
+
+    for i, data in enumerate(train_loader):
+        x, y = data
+        x, y = x.to(device), y.to(device)
+
+        pred = model(x)
+        loss = loss_fn(pred, y)
+
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+
+        lossi.append(loss.item())
+
+        if i % 10 == 0:
+            logger.debug(f'Iteration: {i} Loss: {loss.item():.4f}')
+
+    return lossi_zero, lossi
+
+
+def get_rolling_average(values: list[float],
+                        window_size: int = 50) -> list[float]:
+    """Returns a list of rolling/sliding mean values."""
+
+    t_values = torch.tensor([values])
+    rolling_avg = F.avg_pool1d(t_values, kernel_size=window_size, stride=1)
+
+    return rolling_avg.view(-1,).numpy()
+
+
+def plot_input_independent_test(lossi_zero: list[float],
+                                lossi: list[float],
+                                path: str,
+                                window_size: int = 32) -> None:
+    """Plots the loss curve for both zeroed and real inputs."""
+
+    lossi_zero = get_rolling_average(lossi_zero, window_size)
+    lossi = get_rolling_average(lossi, window_size)
+
+    plt.figure(figsize=(12, 5))
+    plt.subplot(121)
+    plt.plot(lossi_zero)
+    plt.title('Zeroed input')
+    plt.xlabel('Iteration')
+    plt.ylabel('Loss')
+    plt.subplot(122)
+    plt.plot(lossi)
+    plt.title('Real input')
+    plt.xlabel('Iteration')
+    plt.ylabel('Loss')
+    plt.suptitle('Input Independent Baseline Test')
+    plt.savefig(f'{path}/input_independent_test.png')
+
+
 @torch.no_grad()
 def verify_init_loss(config: ModelConfig,
-                     data: tuple[torch.Tensor, torch.Tensor],
                      device: torch.device) -> tuple[float, float]:
     """Returns initial loss of model and expected loss."""
 
@@ -263,9 +360,11 @@ def verify_init_loss(config: ModelConfig,
     model.to(device)
     model.eval()
 
-    x, y = data
-    x = x.to(device)
-    y = y.to(device)
+    x = torch.randn((config.batch_size, config.n_channels,
+                     config.img_size + 4, config.img_size + 4),
+                    device=device)
+    y = torch.randint(config.n_classes, size=(config.batch_size,),
+                      device=device)
 
     pred = model(x)
     init_loss = F.cross_entropy(pred, y).item()
