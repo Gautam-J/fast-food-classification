@@ -12,7 +12,8 @@ from utils import (
     overfit_single_batch,
     input_independent_baseline,
     plot_input_independent_test,
-    plot_overfit_test
+    plot_overfit_test,
+    chart_dependency_backprop
 )
 
 if __name__ == '__main__':
@@ -27,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--init_loss', action='store_true', help='Flag to test init loss')
     parser.add_argument('--ip_ind', action='store_true', help='Flag to test input independent baseline')
     parser.add_argument('--overfit_single', action='store_true', help='Flag to overfit single batch of data')
+    parser.add_argument('--chart_backprop', action='store_true', help='Flag to chart dependencies using backprop')
     opts = parser.parse_args()
 
     os.makedirs(opts.work_dir, exist_ok=True)
@@ -72,3 +74,8 @@ if __name__ == '__main__':
 
         plot_overfit_test(lossi, opts.work_dir, log_transform=True)
         logger.info('Saved overfit on single batch test plot')
+
+    if opts.chart_backprop:
+        logger.info('Starting dependencies test using backprop')
+        chart_dependency_backprop(config, device)
+        logger.info('Dependecies verified')

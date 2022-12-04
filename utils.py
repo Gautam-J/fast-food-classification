@@ -440,3 +440,27 @@ def get_dataloader(path: str, config: ModelConfig, n_workers: int,
                             shuffle=shuffle)
 
     return dataloader
+
+
+def chart_dependency_backprop(config: ModelConfig,
+                              device: torch.device) -> None:
+    """Charts dependencies using backpropagation."""
+
+    model = Net(config)
+    model.to(device)
+    model.train()
+
+    x = torch.randn((config.batch_size, 1, config.img_size + 4,
+                     config.img_size + 4), device=device)
+    x.requires_grad = True
+
+    out = model(x)
+    loss = out[2].sum()
+    loss.backward()
+
+    assert x.grad is not None
+    for i in range(config.batch_size):
+        if i != 2:
+            assert (x.grad[i] == 0).all()
+        else:
+            assert (x.grad[i] != 0).any()
