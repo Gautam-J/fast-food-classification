@@ -69,6 +69,61 @@ class Net(nn.Module):
         return output
 
 
+def plot_overfit_test(lossi: list[float],
+                      path: str,
+                      log_transform: bool = True) -> None:
+    """Plots the rolling average of loss values."""
+
+    ylabel = 'Loss'
+    if log_transform:
+        lossi = torch.log10(torch.tensor(lossi)).numpy()
+        ylabel = r'$\log_{10}$ Loss'
+
+    plt.plot(lossi)
+    plt.xlabel('Iterations')
+    plt.ylabel(ylabel)
+    plt.title('Overfit on single batch data')
+    plt.savefig(f'{path}/overfit_single_batch.png')
+
+
+def overfit_single_batch(config: ModelConfig,
+                         device: torch.device,
+                         logger: logging.Logger,
+                         lr: float,
+                         n_workers: int,
+                         n_epochs: int) -> list[float]:
+    """Returns loss values afer overfitting on a single batch of data."""
+
+    train_loader = get_dataloader('./data/train', config, n_workers)
+    batch_iter = iter(train_loader)
+    current_batch = next(batch_iter)
+    data = [x for x in current_batch]
+    x, y = data
+    x, y = x.to(device), y.to(device)
+
+    model = Net(config)
+    model.to(device)
+    model.train()
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = Adam(model.parameters(), lr=lr)
+    lossi = []
+
+    for k in range(n_epochs):
+        pred = model(x)
+        loss = loss_fn(pred, y)
+
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+
+        lossi.append(loss.item())
+
+        if k % 10 == 0:
+            logger.debug(f'Epoch: {k} Loss: {loss.item():.4f}')
+
+    return lossi
+
+
 def get_transforms(config: ModelConfig) -> transforms.Compose:
     """Returns a compose of torchvision transforms."""
 
@@ -321,8 +376,8 @@ def get_rolling_average(values: list[float],
                         window_size: int = 50) -> list[float]:
     """Returns a list of rolling/sliding mean values."""
 
-    t_values = torch.tensor([values])
-    rolling_avg = F.avg_pool1d(t_values, kernel_size=window_size, stride=1)
+    t_values = torch.tensor(values)
+    rolling_avg = F.avg_pool1d(t_values.view(1, -1), kernel_size=window_size, stride=1)
 
     return rolling_avg.view(-1,).numpy()
 

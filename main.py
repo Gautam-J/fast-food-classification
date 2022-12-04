@@ -9,9 +9,10 @@ from utils import (
     set_rng_seed,
     get_logger,
     verify_init_loss,
-    get_dataloader,
+    overfit_single_batch,
     input_independent_baseline,
-    plot_input_independent_test
+    plot_input_independent_test,
+    plot_overfit_test
 )
 
 if __name__ == '__main__':
@@ -23,6 +24,9 @@ if __name__ == '__main__':
     parser.add_argument('--n_epochs', type=int, default=2, help="number of epochs to train")
     parser.add_argument('--learning_rate', '-l', type=float, default=1e-3, help="learning rate")
     parser.add_argument('--weight_decay', '-w', type=float, default=0., help="weight decay")
+    parser.add_argument('--init_loss', action='store_true', help='Flag to test init loss')
+    parser.add_argument('--ip_ind', action='store_true', help='Flag to test input independent baseline')
+    parser.add_argument('--overfit_single', action='store_true', help='Flag to overfit single batch of data')
     opts = parser.parse_args()
 
     os.makedirs(opts.work_dir, exist_ok=True)
@@ -42,20 +46,29 @@ if __name__ == '__main__':
     device = torch.device(opts.device)
     logger.info(f'Using {device} device')
 
-    logger.info('Starting init loss test...')
-    init_loss, expected_loss = verify_init_loss(config, device)
-    logger.critical(f'Initial loss: {init_loss:.4f} Expected loss: {expected_loss:.4f}')
+    if opts.init_loss:
+        logger.info('Starting init loss test...')
+        init_loss, expected_loss = verify_init_loss(config, device)
+        logger.critical(f'Initial loss: {init_loss:.4f} Expected loss: {expected_loss:.4f}')
 
-    logger.info('Getting dataloaders...')
-    train_loader = get_dataloader('./data/train', config, opts.n_workers)
-    test_loader = get_dataloader('./data/test', config, opts.n_workers, shuffle=False)
+    if opts.ip_ind:
+        logger.info('Starting input-independent baseline test...')
+        lossi_zero, lossi = input_independent_baseline(config, device, logger,
+                                                       opts.learning_rate,
+                                                       opts.n_workers)
+        logger.critical(f'Zeroed input loss after 1 epoch: {lossi_zero[-1]:.4f}')
+        logger.critical(f'Real input loss after 1 epoch: {lossi[-1]:.4f}')
 
-    logger.info('Starting input-independent baseline test...')
-    lossi_zero, lossi = input_independent_baseline(config, device, logger,
-                                                   opts.learning_rate,
-                                                   opts.n_workers)
-    logger.critical(f'Zeroed input loss after 1 epoch: {lossi_zero[-1]:.4f}')
-    logger.critical(f'Real input loss after 1 epoch: {lossi[-1]:.4f}')
+        plot_input_independent_test(lossi_zero, lossi, path=opts.work_dir)
+        logger.info('Saved input-independent baseline test plot')
 
-    plot_input_independent_test(lossi_zero, lossi, path=opts.work_dir)
-    logger.info('Saved input-independent baseline test plot')
+    if opts.overfit_single:
+        logger.info('Starting overfit on single batch data')
+        lossi = overfit_single_batch(config, device, logger,
+                                     opts.learning_rate,
+                                     opts.n_workers,
+                                     opts.n_epochs)
+        logger.critical(f'Loss after {opts.n_epochs} iterations on {config.batch_size} inputs: {lossi[-1]:.4f}')
+
+        plot_overfit_test(lossi, opts.work_dir, log_transform=True)
+        logger.info('Saved overfit on single batch test plot')
