@@ -25,4 +25,4 @@ Trying to follow Andrej Karpathy's [recipe](http://karpathy.github.io/2019/04/25
 
 ### Single Batch Overfit Test
 
-![] (./readme_media/overfit_single_batch.png)
+![](./readme_media/overfit_single_batch.png)
