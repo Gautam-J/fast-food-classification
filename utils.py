@@ -292,7 +292,8 @@ def view_images_in_directory(path: str,
     random_indices = np.random.randint(0, len(paths), size=(n_images,))
     paths = [paths[i] for i in random_indices]
 
-    imgs = [TVF.resize(read_image(path, mode=ImageReadMode.RGB), size=[img_size, img_size]) for path in paths]
+    imgs = [TVF.resize(read_image(path, mode=ImageReadMode.RGB), size=[
+                       img_size, img_size]) for path in paths]
     grid = make_grid(imgs, nrow=n_rows)
     grid = grid.permute(1, 2, 0)  # channels_first to channels_last
 
@@ -377,7 +378,8 @@ def get_rolling_average(values: list[float],
     """Returns a list of rolling/sliding mean values."""
 
     t_values = torch.tensor(values)
-    rolling_avg = F.avg_pool1d(t_values.view(1, -1), kernel_size=window_size, stride=1)
+    rolling_avg = F.avg_pool1d(t_values.view(
+        1, -1), kernel_size=window_size, stride=1)
 
     return rolling_avg.view(-1,).numpy()
 
