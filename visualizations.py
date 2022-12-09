@@ -57,14 +57,18 @@ def save_classification_report(y_true: Iterable,
                                    output_dict=True)
 
     df = pd.DataFrame(report).T
-    cr = sns.heatmap(df, annot=True, cmap='coolwarm', cbar=False)
+    sns.heatmap(df, annot=True, cmap='coolwarm', cbar=False)
 
     os.makedirs(directory, exist_ok=True)
 
-    cr.yaxis.set_ticklabels(cr.yaxis.get_ticklabels(),
-                            rotation=0, ha='right', fontsize=10)
-    cr.xaxis.set_ticklabels(cr.xaxis.get_ticklabels(),
-                            rotation=45, ha='right', fontsize=10)
+    # TODO: check working of rotation of ticks
+    # cr.yaxis.set_ticklabels(cr.yaxis.get_ticklabels(),
+    #                         rotation=0, ha='right', fontsize=10)
+    # cr.xaxis.set_ticklabels(cr.xaxis.get_ticklabels(),
+    #                         rotation=45, ha='right', fontsize=10)
+
+    plt.xticks(rotation=45, ha='right', fontsize=10)
+    plt.yticks(rotation=0, ha='right', fontsize=10)
 
     plt.tight_layout()
     plt.savefig(f'{directory}/classification_report.png')
@@ -97,17 +101,22 @@ def save_confusion_matrix(y_true: Iterable,
                               normalize='true')
 
     df = pd.DataFrame(matrix, index=class_labels, columns=class_labels)
-    hm = sns.heatmap(df, annot=True, cmap='coolwarm', cbar=False)
+    sns.heatmap(df, annot=True, cmap='coolwarm', cbar=False)
 
     os.makedirs(directory, exist_ok=True)
 
-    hm.yaxis.set_ticklabels(hm.yaxis.get_ticklabels(),
-                            rotation=0, ha='right', fontsize=10)
-    hm.xaxis.set_ticklabels(hm.xaxis.get_ticklabels(),
-                            rotation=45, ha='right', fontsize=10)
+    # hm.yaxis.set_ticklabels(hm.yaxis.get_ticklabels(),
+    #                         rotation=0, ha='right', fontsize=10)
+    # hm.xaxis.set_ticklabels(hm.xaxis.get_ticklabels(),
+    #                         rotation=45, ha='right', fontsize=10)
 
-    hm.set_xlabel('Predicted Label')
-    hm.set_ylabel('True Label')
+    # hm.set_xlabel('Predicted Label')
+    # hm.set_ylabel('True Label')
+
+    plt.xticks(rotation=45, ha='right', fontsize=10)
+    plt.yticks(rotation=0, ha='right', fontsize=10)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
 
     plt.tight_layout()
     plt.savefig(f'{directory}/confusion_matrix.png')
