@@ -1,7 +1,11 @@
+import logging
+
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 from models import ModelConfig, Net
+from utils import get_dataloader
 
 
 def overfit_single_batch(config: ModelConfig,
@@ -123,7 +127,7 @@ def verify_init_loss(config: ModelConfig,
 
     pred = model(x)
     init_loss = F.cross_entropy(pred, y).item()
-    expected_loss = -torch.log(1/torch.tensor(config.n_classes)).item()
+    expected_loss = -torch.log(1 / torch.tensor(config.n_classes)).item()
 
     return init_loss, expected_loss
 
