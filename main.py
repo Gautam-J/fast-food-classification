@@ -1,11 +1,17 @@
 import os
+import time
 import json
 import torch
 import argparse
+import warnings
 
-from models import ModelConfig
-from visualizations import plot_input_independent_test, plot_overfit_test
-from utils import set_rng_seed, get_logger
+import torch.nn as nn
+from torch.optim import Adam
+from torch.utils.tensorboard import SummaryWriter
+
+from models import Net, ModelConfig
+from visualizations import plot_input_independent_test, plot_overfit_test, plot_learning_curve
+from utils import get_dataloader, set_rng_seed, get_logger, save_model, plot_predictions
 from stages import (
     verify_init_loss,
     overfit_single_batch,
@@ -13,10 +19,12 @@ from stages import (
     chart_dependency_backprop
 )
 
+warnings.filterwarnings("ignore")
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fast food classification')
     parser.add_argument('--work_dir', '-o', type=str,
-                        default='./out', help="output working directory")
+                        default='out', help="output working directory")
     parser.add_argument('--seed', type=int, default=42,
                         help="random number generator seed")
     parser.add_argument('--device', type=str, default='mps',
@@ -92,3 +100,105 @@ if __name__ == '__main__':
         logger.info('Starting dependencies test using backprop')
         chart_dependency_backprop(config, device)
         logger.critical('Dependecies verified using backprop')
+
+    logger.info('Training model with given config and opts...')
+    writer = SummaryWriter(comment=opts.work_dir)
+    acci = []
+    lossi = []
+    train_acce = []
+    test_acce = []
+    train_losse = []
+    test_losse = []
+
+    model = Net(config)
+    model.to(device)
+
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = Adam(model.parameters(),
+                     lr=opts.learning_rate,
+                     weight_decay=opts.weight_decay)
+
+    train_dataloader = get_dataloader("./data/train", config, opts.n_workers)
+    test_dataloader = get_dataloader("./data/test", config, opts.n_workers, shuffle=False)
+
+    for k in range(opts.n_epochs):
+        logger.debug(f'Starting epoch {k}...')
+        t0 = time.time()
+
+        model.train()
+        for i, data in enumerate(train_dataloader):
+            x, y = data
+            x, y = x.to(device), y.to(device)
+
+            pred = model(x)
+            loss = loss_fn(pred, y)
+
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+
+            acc = torch.sum(torch.argmax(pred, dim=1) == y) / pred.shape[0]
+            lossi.append(loss.item())
+            acci.append(acc.item())
+
+            writer.add_scalar('Loss/train_batch', loss.item(), k * len(train_dataloader) + i)
+            writer.add_scalar('Accuracy/train_batch', acc.item(), k * len(train_dataloader) + i)
+
+            if i % 20 == 0:
+                logger.debug(f'Epoch[{k}/{opts.n_epochs}] Iter[{i}/{len(train_dataloader)}] Loss: {loss.item():.4f} Acc: {acc.item():.2%}')
+
+        t1 = time.time()
+
+        model.eval()
+        with torch.no_grad():
+            total_loss = 0.0
+            total_acc = 0.0
+            for x, y in test_dataloader:
+                x, y = x.to(device), y.to(device)
+                pred = model(x)
+
+                total_loss += loss_fn(pred, y).item()
+                total_acc += (torch.sum(torch.argmax(pred, dim=1) == y) / pred.shape[0]).item()
+
+            test_loss = total_loss / len(test_dataloader)
+            test_acc = total_acc / len(test_dataloader)
+            test_acce.append(test_acc)
+            test_losse.append(test_loss)
+
+            writer.add_scalar('Loss/test_epoch', test_loss, k)
+            writer.add_scalar('Accuracy/test_epoch', test_acc, k)
+
+            total_loss = 0.0
+            total_acc = 0.0
+            for x, y in train_dataloader:
+                x, y = x.to(device), y.to(device)
+                pred = model(x)
+
+                total_loss += loss_fn(pred, y).item()
+                total_acc += (torch.sum(torch.argmax(pred, dim=1) == y) / pred.shape[0]).item()
+
+            train_loss = total_loss / len(train_dataloader)
+            train_acc = total_acc / len(train_dataloader)
+            train_acce.append(train_acc)
+            train_losse.append(train_loss)
+
+            writer.add_scalar('Loss/train_epoch', train_loss, k)
+            writer.add_scalar('Accuracy/train_epoch', train_acc, k)
+
+        t2 = time.time()
+
+        logger.debug('=' * 50)
+        logger.critical(f'End of epoch {k} Time Taken: {t1 - t0:.2f} + {t2 - t1:.2f} = {t2 - t0:.2f}s')
+        logger.critical(f'Training loss: {train_loss:.4f} Training acc: {train_acc:.2%}')
+        logger.critical(f'Testing loss: {test_loss:.4f} Testing acc: {test_acc:.2%}')
+        logger.debug('=' * 50)
+
+    writer.close()
+
+    save_model(model, opts.work_dir)
+    logger.info("Model saved successfully!")
+
+    plot_learning_curve(train_losse, test_losse, train_acce, test_acce, opts.work_dir)
+    plot_predictions(model, config, device, opts.work_dir)
+
+    logger.info('Experiment finished successfully!')

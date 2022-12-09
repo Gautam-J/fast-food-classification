@@ -15,6 +15,32 @@ from torchvision.io import read_image, ImageReadMode
 from typing import Iterable, Optional
 
 
+def plot_learning_curve(train_loss: list[float],
+                        test_loss: list[float],
+                        train_acc: list[float],
+                        test_acc: list[float],
+                        path: str) -> None:
+    """Plots and saves the learning curve of the given training history."""
+
+    plt.figure(figsize=(8, 8))
+    plt.subplot(211)
+    plt.plot(train_acc, label='train_accuracy')
+    plt.plot(test_acc, label='test_accuracy')
+    plt.title(f'Train: {train_acc[-1]:.2%} | Test: {test_acc[-1]:.2%}')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend(loc='lower right')
+    plt.subplot(212)
+    plt.plot(train_loss, label='train_loss')
+    plt.plot(test_loss, label='test_loss')
+    plt.title(f'Train: {train_loss[-1]:.4f} | Test: {test_loss[-1]:.4f}')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend(loc='upper right')
+    plt.savefig(f'{path}/learning_curve.png')
+    plt.close()
+
+
 def plot_overfit_test(lossi: list[float],
                       path: str,
                       log_transform: bool = True) -> None:

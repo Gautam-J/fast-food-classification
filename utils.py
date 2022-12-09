@@ -2,9 +2,12 @@ import random
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
 from models import ModelConfig
 
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
@@ -12,6 +15,54 @@ from torchvision.datasets import ImageFolder
 from typing import Optional
 
 plt.style.use('seaborn')
+
+
+def plot_predictions(model: nn.Module,
+                     config: ModelConfig,
+                     device: torch.device,
+                     path: str,
+                     n_images: int = 25):
+    """Get predictions for random subset of testing dataset."""
+
+    transform = get_transforms(config)
+    dataset = ImageFolder('./data/test', transform=transform)
+    random_dataset = random.sample(dataset.imgs, n_images)
+    idx_to_class = {v: k for k, v in dataset.class_to_idx.items()}
+    data = []
+
+    with torch.no_grad():
+        model.eval()
+        for x, y in random_dataset:
+            img = Image.open(x)
+            img_t = transform(img).to(device)
+            img_t = torch.unsqueeze(img_t, dim=0)
+            pred = model(img_t)
+            probs = F.softmax(pred, dim=1)
+            pred_idx = torch.argmax(pred, dim=1).item()
+            pred_class = idx_to_class[pred_idx]
+            y_class = idx_to_class[y]
+            data.append((x, pred_class, probs[0][pred_idx].item(), y_class))
+
+    nrows = int(n_images**0.5)
+    plt.figure(figsize=(10, 10))
+    for i in range(1, n_images + 1):
+        plt.subplot(nrows, nrows, i)
+        img = Image.open(data[i - 1][0])
+        img = img.resize((200, 200))
+        plt.title(f'{data[i-1][3]} | {data[i-1][1]} - {data[i-1][2]:.2%}', size=8)
+        plt.imshow(img)
+        plt.grid()
+        plt.axis('off')
+
+    plt.suptitle('Label | Prediction - Confidence Score')
+    plt.tight_layout()
+    plt.savefig(f'{path}/predictions.png')
+
+
+def save_model(model: nn.Module, path: str) -> None:
+    """Saves the pytorch model, along with its weight."""
+    torch.save(model, f'{path}/model.pt')
+    torch.save(model.state_dict(), f'{path}/weights.pt')
 
 
 def get_transforms(config: ModelConfig) -> transforms.Compose:
