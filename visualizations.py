@@ -30,6 +30,7 @@ def plot_overfit_test(lossi: list[float],
     plt.ylabel(ylabel)
     plt.title('Overfit on single batch data')
     plt.savefig(f'{path}/overfit_single_batch.png')
+    plt.close()
 
 
 def save_classification_report(y_true: Iterable,
@@ -152,6 +153,7 @@ def view_images_in_directory(path: str,
         plt.savefig(save_path)
 
     plt.show()
+    plt.close()
 
 
 def get_rolling_average(values: list[float],
@@ -187,3 +189,4 @@ def plot_input_independent_test(lossi_zero: list[float],
     plt.ylabel('Loss')
     plt.suptitle('Input Independent Baseline Test')
     plt.savefig(f'{path}/input_independent_test.png')
+    plt.close()

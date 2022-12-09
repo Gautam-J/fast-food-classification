@@ -25,6 +25,8 @@ if __name__ == '__main__':
                         help="workers to use for loading data")
     parser.add_argument('--n_epochs', type=int, default=2,
                         help="number of epochs to train")
+    parser.add_argument('--n_iters', type=int, default=500,
+                        help="number of iteratiosn to train a single batch")
     parser.add_argument('--learning_rate', '-l', type=float,
                         default=1e-3, help="learning rate")
     parser.add_argument('--weight_decay', '-w', type=float,
@@ -41,7 +43,7 @@ if __name__ == '__main__':
 
     os.makedirs(opts.work_dir, exist_ok=True)
     logger = get_logger('ffc', file_path=f'{opts.work_dir}/temp.log')
-    logger.info('====================NEW RUN====================')
+    logger.info(f'{"NEW RUN":=^50}')
 
     config = ModelConfig()
 
@@ -79,9 +81,9 @@ if __name__ == '__main__':
         lossi = overfit_single_batch(config, device, logger,
                                      opts.learning_rate,
                                      opts.n_workers,
-                                     opts.n_epochs)
+                                     opts.n_iters)
         logger.critical(
-            f'Loss after {opts.n_epochs} iterations on {config.batch_size} inputs: {lossi[-1]:.4f}')
+            f'Loss after {opts.n_iters} iterations on {config.batch_size} inputs: {lossi[-1]:.4f}')
 
         plot_overfit_test(lossi, opts.work_dir, log_transform=True)
         logger.info('Saved overfit on single batch test plot')
@@ -89,4 +91,4 @@ if __name__ == '__main__':
     if opts.chart_backprop:
         logger.info('Starting dependencies test using backprop')
         chart_dependency_backprop(config, device)
-        logger.info('Dependecies verified')
+        logger.critical('Dependecies verified using backprop')

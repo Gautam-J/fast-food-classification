@@ -50,5 +50,7 @@ class Net(nn.Module):
 
 
 if __name__ == "__main__":
-    model = Net(ModelConfig())
-    summary(model, (32, 1, 32, 32))
+    config = ModelConfig()
+    model = Net(config)
+    summary(model, (config.batch_size, config.n_channels,
+                    config.img_size, config.img_size))
