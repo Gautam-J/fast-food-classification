@@ -1,18 +1,15 @@
 import os
 import json
+import torch
 import argparse
 
-import torch
-
-from utils import ModelConfig
-from utils import (
-    set_rng_seed,
-    get_logger,
+from models import ModelConfig
+from visualizations import plot_input_independent_test, plot_overfit_test
+from utils import set_rng_seed, get_logger
+from stages import (
     verify_init_loss,
     overfit_single_batch,
     input_independent_baseline,
-    plot_input_independent_test,
-    plot_overfit_test,
     chart_dependency_backprop
 )
 
