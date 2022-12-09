@@ -29,9 +29,9 @@ if __name__ == '__main__':
                         help="random number generator seed")
     parser.add_argument('--device', type=str, default='mps',
                         help="device to use for computation (cpu, cuda, mps)")
-    parser.add_argument('--n_workers', type=int, default=8,
+    parser.add_argument('--n_workers', type=int, default=0,
                         help="workers to use for loading data")
-    parser.add_argument('--n_epochs', type=int, default=2,
+    parser.add_argument('--n_epochs', type=int, default=20,
                         help="number of epochs to train")
     parser.add_argument('--n_iters', type=int, default=500,
                         help="number of iteratiosn to train a single batch")
@@ -102,7 +102,7 @@ if __name__ == '__main__':
         logger.critical('Dependecies verified using backprop')
 
     logger.info('Training model with given config and opts...')
-    writer = SummaryWriter(comment=opts.work_dir)
+    writer = SummaryWriter(comment=f'_{opts.work_dir}')
     acci = []
     lossi = []
     train_acce = []
