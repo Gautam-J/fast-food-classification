@@ -1,0 +1,14 @@
+{
+    "work_dir": "eff_b0",
+    "seed": 42,
+    "device": "mps",
+    "n_workers": 0,
+    "n_epochs": 3,
+    "n_iters": 500,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "init_loss": false,
+    "ip_ind": false,
+    "overfit_single": false,
+    "chart_backprop": false
+}

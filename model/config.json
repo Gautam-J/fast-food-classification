@@ -1,0 +1,6 @@
+{
+    "img_size": 224,
+    "n_channels": 3,
+    "n_classes": 5,
+    "batch_size": 32
+}
