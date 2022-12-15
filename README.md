@@ -3,7 +3,9 @@
 Training a nn to classify food items using PyTorch.
 Trying to follow Andrej Karpathy's [recipe](http://karpathy.github.io/2019/04/25/recipe/) for training nn.
 
-## 1. EDA
+Ended up fine-tuning an EfficientNetB0, pre-trained on ImageNet.
+
+## EDA
 
 ### Training Data
 
@@ -17,7 +19,7 @@ Trying to follow Andrej Karpathy's [recipe](http://karpathy.github.io/2019/04/25
 
 ![](./readme_media/size_distribution.png)
 
-## 2. Baseline
+## Baseline
 
 ### Input Independent Test
 
@@ -26,3 +28,16 @@ Trying to follow Andrej Karpathy's [recipe](http://karpathy.github.io/2019/04/25
 ### Single Batch Overfit Test
 
 ![](./readme_media/overfit_single_batch.png)
+
+## Model tuning
+
+### Prediction
+
+![](./readme_media/predictions.png)
+
+### Results
+
+|       | Accuracy | Loss   |
+| ----- | -------- | ------ |
+| Train | 97.55%   | 0.0764 |
+| Test  | 88.92%   | 0.2931 |
