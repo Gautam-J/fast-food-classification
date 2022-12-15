@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
+from torchvision.transforms import InterpolationMode
 from torchvision.datasets import ImageFolder
 
 from typing import Optional
@@ -21,7 +22,7 @@ def plot_predictions(model: nn.Module,
                      config: ModelConfig,
                      device: torch.device,
                      path: str,
-                     n_images: int = 25):
+                     n_images: int = 25) -> None:
     """Get predictions for random subset of testing dataset."""
 
     transform = get_transforms(config)
@@ -69,10 +70,10 @@ def get_transforms(config: ModelConfig) -> transforms.Compose:
     """Returns a compose of torchvision transforms."""
 
     transform = [
+        transforms.Resize((256, 256), interpolation=InterpolationMode.BICUBIC),
+        transforms.CenterCrop((config.img_size, config.img_size)),
         transforms.ToTensor(),
-        transforms.Resize((config.img_size, config.img_size)),
-        transforms.Pad(2, fill=0),
-        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]
 
     if config.n_channels == 1:

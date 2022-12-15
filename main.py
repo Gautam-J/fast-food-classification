@@ -7,9 +7,10 @@ import warnings
 
 import torch.nn as nn
 from torch.optim import Adam
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
+from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 
-from models import Net, ModelConfig
+from models import ModelConfig
 from visualizations import plot_input_independent_test, plot_overfit_test, plot_learning_curve
 from utils import get_dataloader, set_rng_seed, get_logger, save_model, plot_predictions
 from stages import (
@@ -31,7 +32,7 @@ if __name__ == '__main__':
                         help="device to use for computation (cpu, cuda, mps)")
     parser.add_argument('--n_workers', type=int, default=0,
                         help="workers to use for loading data")
-    parser.add_argument('--n_epochs', type=int, default=20,
+    parser.add_argument('--n_epochs', type=int, default=40,
                         help="number of epochs to train")
     parser.add_argument('--n_iters', type=int, default=500,
                         help="number of iteratiosn to train a single batch")
@@ -110,8 +111,13 @@ if __name__ == '__main__':
     train_losse = []
     test_losse = []
 
-    model = Net(config)
+    model = efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
+    for p in model.parameters():
+        p.requires_grad = False
+    model.classifier[1] = nn.Linear(1280, config.n_classes)
     model.to(device)
+    n_params = sum(p.nelement() for p in model.parameters())
+    logger.critical(f'Model Parameters: {n_params:,}')
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer = Adam(model.parameters(),
@@ -202,3 +208,4 @@ if __name__ == '__main__':
     plot_predictions(model, config, device, opts.work_dir)
 
     logger.info('Experiment finished successfully!')
+    logger.info(f'{"END OF RUN":=^50}')
