@@ -13,9 +13,37 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 from torchvision.datasets import ImageFolder
 
-from typing import Optional
+from typing import Optional, Callable, TypeVar
+from typing_extensions import ParamSpec
 
 plt.style.use('seaborn')
+R = TypeVar("R")  # return value of inner function
+P = ParamSpec("P")  # parameters of inner function
+
+
+def measure_time(func: Callable[P, R]) -> Callable[P, R]:
+    """Print time taken ({}m {}s) to execute the wrapper function.
+
+    Parameters
+    ----------
+    func : Callable[P, R]
+        The function to be wrapped.
+
+    Returns
+    -------
+    Callable[P, R]
+        The input function, wrapped with this decorator.
+    """
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        run_time = round(time.time() - start_time)
+        m, s = divmod(run_time, 60)
+        print('-' * 80)
+        print(f"'{func.__name__}' took {m:.0f}m {s:.2f}s to execute.")
+        print('-' * 80)
+        return result
+    return wrapper
 
 
 def plot_predictions(model: nn.Module,
