@@ -83,51 +83,82 @@ def get_transforms(config: ModelConfig) -> transforms.Compose:
 
 
 def get_logger(name: str,
-               file_path: Optional[str] = None,
-               formatter: Optional[logging.Formatter] = None,
-               level: int = logging.DEBUG) -> logging.Logger:
+               io_stream: StringIO = None,
+               file_path: str = None,
+               formatter: logging.Formatter = None,
+               base_level: int = logging.DEBUG,
+               file_level: int = logging.INFO,
+               io_level: int = logging.ERROR) -> logging.Logger:
     """Set up a python logger to log results.
+
     Parameters
     ----------
     name : str
         Name of the logger.
+    io_stream : StringIO, default=None
+        StringIO object to capture logs inside the string.
     formatter : logging.Formatter, default=None
         A custom formatter for the logger to output. If None, a default
         formatter of format `"%Y-%m-%d %H:%M:%S LEVEL MESSAGE"` is used.
     file_path : str, default=None
         File path to record logs. Must end with a readable extension. If None,
         the logs are not logged in any file, and are logged only to `stdout`.
-    level : LEVEL or int, default=logging.DEBUG (10)
-        Base level to log. Any level lower than this level will not be logged.
+    base_level : LEVEL or int, default=logging.DEBUG (10)
+        Base level to log. Any level lower than this level will not be logged
+        by any of the handlers.
+    file_level: LEVEL or int, default=logging.INFO (20)
+        Level to log in file. Any level lower than this will not be logged
+        by the file handler.
+    io_level: LEVEL or int, default=logging.ERROR (40)
+        Level to log in io stream. Any level lower than this will not be logged
+        by the IO stream handler.
+
     Returns
     -------
     logger : logging.Logger
         A logger with formatters and handlers attached to it.
+
     Notes
     -----
     If passing a directory name along with the log file, make sure the
     directory exists.
+
+    Example for setting up IO Stream:
+    >>> import io
+    >>> ios = io.StringIO()
+    >>> logger = get_logger('my_logger', io_stream=ios)
+    >>> contents = ios.getvalue()
+    >>> ios.close()
+    >>> print(contents)
     """
 
-    if formatter is None:
-        formatter = logging.Formatter(
-            "%(asctime)s %(levelname)-8s %(message)s",
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
+    try:
+        if formatter is None:
+            formatter = logging.Formatter("%(asctime)s %(levelname)-8s %(message)s",
+                                          datefmt='%Y-%m-%d %H:%M:%S%z')
 
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+        logger = logging.getLogger(name)
+        logger.setLevel(base_level)
 
-    streamHandler = logging.StreamHandler()
-    streamHandler.setFormatter(formatter)
-    logger.addHandler(streamHandler)
+        streamHandler = logging.StreamHandler()
+        streamHandler.setFormatter(formatter)
+        logger.addHandler(streamHandler)
 
-    if file_path is not None:
-        fileHandler = logging.FileHandler(file_path)
-        fileHandler.setFormatter(formatter)
-        logger.addHandler(fileHandler)
+        if io_stream is not None:
+            ioStreamHandler = logging.StreamHandler(io_stream)
+            ioStreamHandler.setFormatter(formatter)
+            ioStreamHandler.setLevel(io_level)
+            logger.addHandler(ioStreamHandler)
 
-    return logger
+        if file_path is not None:
+            fileHandler = logging.FileHandler(file_path)
+            fileHandler.setFormatter(formatter)
+            fileHandler.setLevel(file_level)
+            logger.addHandler(fileHandler)
+
+        return logger
+    except Exception as e:
+        print('Error while getting logger:', e)
 
 
 def set_rng_seed(seed: int = 42) -> None:
